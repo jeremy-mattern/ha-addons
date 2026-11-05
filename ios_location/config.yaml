@@ -1,0 +1,41 @@
+name: iOS Location Bridge
+version: "0.1.0"
+slug: ios_location
+description: Set the GPS location of a USB-connected iPhone from Home Assistant — mirror another tracker or pin a fixed spot.
+url: https://github.com/jeremy-mattern/ha-addons/tree/main/ios_location
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: application
+boot: auto
+stage: experimental
+# The iPhone is reached over USB through usbmuxd running inside the container.
+usb: true
+udev: true
+# Reads the mode/source/fixed helpers and publishes sensor.ios_location_bridge.
+homeassistant_api: true
+options:
+  mode_entity: input_select.ios_location_mode
+  source_entity: device_tracker.mattern17pro
+  fixed_entity: input_text.ios_location_fixed
+  device_udid: ""
+  poll_interval: 15
+  min_move_meters: 15
+  max_gps_accuracy: 150
+  reassert_minutes: 5
+  notify_service: notify.mobile_app_mattern17pro
+  notify_after_seconds: 180
+  log_level: info
+schema:
+  mode_entity: str
+  source_entity: str
+  fixed_entity: str
+  device_udid: str?
+  poll_interval: int(5,300)
+  min_move_meters: int(0,5000)
+  max_gps_accuracy: int(0,10000)
+  reassert_minutes: int(1,120)
+  notify_service: str?
+  notify_after_seconds: int(30,3600)
+  log_level: list(debug|info|warning|error)
