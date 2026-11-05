@@ -2,7 +2,7 @@
 
 ## 0.1.2
 
-- After the iPhone restarts, report "unlock it once" (needs_attention, 10 s retry) instead of a raw DeviceLocked error with slow back-off.
+- After the iPhone restarts, report "unlock it and keep it on the Home Screen" (needs_attention, 10 s retry) instead of a raw DeviceLocked error with slow back-off.
 
 ## 0.1.1
 

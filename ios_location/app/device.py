@@ -176,7 +176,8 @@ class IPhoneSession:
                 # After a restart the phone won't take the image until it's unlocked once.
                 if "DeviceLocked" in str(e):
                     raise DeviceNotReady(
-                        "the iPhone restarted — unlock it once so the developer image can be mounted"
+                        "the iPhone restarted — unlock it and keep it on the Home Screen until this "
+                        "shows Mirroring or Fixed (about 15 seconds)"
                     ) from e
                 raise
 

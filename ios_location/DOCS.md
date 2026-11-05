@@ -58,7 +58,10 @@ Pairing records live in the app's `/data`, so updates and rebuilds don't need a 
 ## What it handles by itself
 
 - **Phone reboots / iOS updates / cable pulls:** the session is rebuilt and the developer disk
-  image remounted automatically (it lives in RAM, so every reboot needs it).
+  image remounted automatically (it lives in RAM, so every reboot needs it). After a restart the
+  phone must be **unlocked at the moment of the remount** — unlock it and keep it on the Home
+  Screen until the status shows Mirroring or Fixed (retries every 10 s). Once mounted, it keeps
+  working while locked.
 - **USB not seen after a replug:** usbmuxd is restarted after 60 s with no phone.
 - **Add-on stop:** the simulated location is cleared first.
 
