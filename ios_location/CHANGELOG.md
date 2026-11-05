@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- Fix: a phone plugged in (or rebooted) after the app started was never seen, because USB hot-plug events don't reach usbmuxd inside the container. usbmuxd now rescans every 15 s while no phone is found.
+
 ## 0.1.0
 
 - First release: Off / Mirror / Fixed modes driven by Home Assistant helpers.

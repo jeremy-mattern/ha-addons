@@ -36,7 +36,7 @@ STATUS_LABELS = {
     "error": "Error",
     "stopped": "Add-on stopped",
 }
-NO_DEVICE_USBMUXD_RESTART_S = 60
+NO_DEVICE_USBMUXD_RESTART_S = 15
 
 
 def load_options() -> dict[str, Any]:
@@ -210,11 +210,17 @@ class Bridge:
         except NoDevice as e:
             await session.close()
             self._schedule_retry(fast=True)
-            if self.no_device_since is None:
-                self.no_device_since = time.monotonic()
-            elif self.usbmuxd and time.monotonic() - self.no_device_since > NO_DEVICE_USBMUXD_RESTART_S:
+            # USB hot-plug events don't reach usbmuxd inside the app container, so a phone
+            # plugged in (or rebooted) after usbmuxd started is invisible until it rescans.
+            # Restarting usbmuxd forces that rescan; do it on every miss, rate-limited.
+            now = time.monotonic()
+            if self.usbmuxd and (
+                self.no_device_since is None or now - self.no_device_since >= NO_DEVICE_USBMUXD_RESTART_S
+            ):
                 await asyncio.to_thread(self.usbmuxd.restart)
-                self.no_device_since = time.monotonic()
+                await asyncio.sleep(2)
+            if self.no_device_since is None or now - self.no_device_since >= NO_DEVICE_USBMUXD_RESTART_S:
+                self.no_device_since = now
             await self.publish("no_device", str(e), target)
             return False
         except DeviceNotReady as e:
