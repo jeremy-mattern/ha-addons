@@ -172,6 +172,13 @@ class IPhoneSession:
                 log.info("developer disk image mounted")
             except AlreadyMountedError:
                 log.debug("developer disk image already mounted")
+            except Exception as e:  # noqa: BLE001
+                # After a restart the phone won't take the image until it's unlocked once.
+                if "DeviceLocked" in str(e):
+                    raise DeviceNotReady(
+                        "the iPhone restarted — unlock it once so the developer image can be mounted"
+                    ) from e
+                raise
 
             dvt = await stack.enter_async_context(DvtProvider(rsd))
             self._location = await stack.enter_async_context(LocationSimulation(dvt))

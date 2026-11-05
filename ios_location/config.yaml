@@ -1,5 +1,5 @@
 name: iOS Location Bridge
-version: "0.1.1"
+version: "0.1.2"
 slug: ios_location
 description: Set the GPS location of a USB-connected iPhone from Home Assistant — mirror another tracker or pin a fixed spot.
 url: https://github.com/jeremy-mattern/ha-addons/tree/main/ios_location
