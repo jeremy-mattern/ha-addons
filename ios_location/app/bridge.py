@@ -11,7 +11,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import os
+import random
 import signal
 import time
 from datetime import datetime, timezone
@@ -52,6 +54,8 @@ def load_options() -> dict[str, Any]:
         "reassert_minutes": 5,
         "notify_service": "",
         "notify_after_seconds": 180,
+        "fixed_jitter_meters": 8,
+        "jitter_interval_seconds": 60,
         "log_level": "info",
     }
     if path.exists():
@@ -83,6 +87,9 @@ class Bridge:
         self.last_set: Optional[tuple[float, float]] = None
         self.last_set_at = 0.0
         self.last_set_iso: Optional[str] = None
+        self.jitter_base: Optional[tuple[float, float]] = None
+        self.jitter_offset: tuple[float, float] = (0.0, 0.0)
+        self.jitter_next = 0.0
         self.backoff = 5.0
         self.next_connect_at = 0.0
         self.no_device_since: Optional[float] = None
@@ -126,6 +133,8 @@ class Bridge:
             "device_name": getattr(session, "name", None) or None,
             "ios_version": getattr(session, "ios_version", None) or None,
             "udid": getattr(session, "udid", None) or None,
+            "pinned_latitude": self.jitter_base[0] if self.jitter_base else None,
+            "pinned_longitude": self.jitter_base[1] if self.jitter_base else None,
         }
         changed = state != self.status or attrs != self.status_attrs
         if changed:
@@ -249,12 +258,51 @@ class Bridge:
             self.backoff = min(self.backoff * 2, 120.0)
         self.next_connect_at = time.monotonic() + delay
 
+    def _jitter(self, target: Target) -> tuple[tuple[float, float], bool]:
+        """In Fixed mode, wander a few meters around the pinned spot so the dot looks live.
+
+        A mean-reverting random walk: each step pulls the offset back toward the pin and adds
+        a small random nudge, clamped to fixed_jitter_meters. Steps come at a randomized
+        interval around jitter_interval_seconds. Returns (coords to send, whether it stepped).
+        """
+        base = (float(target.latitude), float(target.longitude))  # type: ignore[arg-type]
+        radius = float(self.opts.get("fixed_jitter_meters") or 0)
+        if target.mode != MODE_FIXED or radius <= 0:
+            self.jitter_base = None
+            return base, False
+
+        now = time.monotonic()
+        stepped = False
+        if self.jitter_base != base:
+            # New pin: start close to it.
+            self.jitter_base = base
+            self.jitter_offset = (random.uniform(-1, 1) * radius * 0.3, random.uniform(-1, 1) * radius * 0.3)
+            self.jitter_next = now
+        if now >= self.jitter_next:
+            east, north = self.jitter_offset
+            east = east * 0.7 + random.gauss(0, radius * 0.35)
+            north = north * 0.7 + random.gauss(0, radius * 0.35)
+            dist = math.hypot(east, north)
+            if dist > radius:
+                east, north = east * radius / dist, north * radius / dist
+            self.jitter_offset = (east, north)
+            interval = float(self.opts.get("jitter_interval_seconds") or 60)
+            self.jitter_next = now + interval * random.uniform(0.6, 1.4)
+            stepped = True
+
+        east, north = self.jitter_offset
+        lat = base[0] + north / 111_320.0
+        lon = base[1] + east / (111_320.0 * max(math.cos(math.radians(base[0])), 0.01))
+        return (lat, lon), stepped
+
     async def apply(self, target: Target) -> None:
         assert target.latitude is not None and target.longitude is not None
-        coords = (target.latitude, target.longitude)
+        new_pin = target.mode == MODE_FIXED and self.jitter_base != (target.latitude, target.longitude)
+        coords, jitter_step = self._jitter(target)
         reassert = int(self.opts["reassert_minutes"]) * 60
         due = (
             self.last_set is None
+            or jitter_step
             or distance_m(self.last_set, coords) >= int(self.opts["min_move_meters"])
             or time.monotonic() - self.last_set_at >= reassert
         )
@@ -273,7 +321,11 @@ class Bridge:
         self.last_set, self.last_set_at = coords, time.monotonic()
         if moved:
             self.last_set_iso = now_iso()
-            log.info("location set to %.6f, %.6f (%s)", coords[0], coords[1], target.source)
+            if new_pin or not jitter_step:
+                log.info("location set to %.6f, %.6f (%s)", coords[0], coords[1], target.source)
+            else:
+                # One line per wander step would flood the log; keep it at debug.
+                log.debug("jitter step to %.6f, %.6f", coords[0], coords[1])
 
     # ---------- loop ----------
 

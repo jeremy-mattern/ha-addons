@@ -7,7 +7,8 @@ Two modes, switched from Home Assistant:
 
 - **Mirror** — the phone follows another tracker (by default `device_tracker.mattern17pro`,
   your daily phone), updating when it moves more than `min_move_meters`.
-- **Fixed** — the phone sits at one place you choose.
+- **Fixed** — the phone sits at one place you choose, drifting a few meters around it like a
+  real phone would (see `fixed_jitter_meters`).
 - **Off** — simulation is cleared and the phone reports its real location.
 
 It uses pymobiledevice3's in-process userspace tunnel, so it needs only USB access — no
@@ -54,6 +55,8 @@ Pairing records live in the app's `/data`, so updates and rebuilds don't need a 
 | `reassert_minutes` | `5` | Re-send the location even if unchanged — doubles as a health check |
 | `notify_service` | `notify.mobile_app_mattern17pro` | Alert when simulation stops and when it resumes; blank to disable |
 | `notify_after_seconds` | `180` | Grace period before the stop alert |
+| `fixed_jitter_meters` | `8` | In Fixed mode, wander up to this far around the pin so the dot looks live; `0` holds it perfectly still |
+| `jitter_interval_seconds` | `60` | Average time between wander steps (each step is randomized ±40 %) |
 
 ## What it handles by itself
 

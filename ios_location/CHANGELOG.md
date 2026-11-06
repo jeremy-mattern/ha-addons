@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0
+
+- Fixed mode now wanders a few meters around the pin (a mean-reverting random walk, default within 8 m, a new step roughly every minute at a randomized interval) so the location looks like a live phone instead of a perfectly still dot. The pin itself is unchanged. Set `fixed_jitter_meters` to 0 to turn it off.
+- Status sensor adds `pinned_latitude` / `pinned_longitude` (the exact pin) alongside the wandering `latitude` / `longitude`.
+
 ## 0.1.2
 
 - After the iPhone restarts, report "unlock it and keep it on the Home Screen" (needs_attention, 10 s retry) instead of a raw DeviceLocked error with slow back-off.
